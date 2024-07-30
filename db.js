@@ -6,7 +6,7 @@ const connectDB = async () => {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });
-    console.log('Connected to MongoDB on port ', process.env.SERVER1);
+    console.log('Connected to MongoDB on port ', process.env.PORT);
   } catch (err) {
     console.error('MongoDB connection error:', err);
     process.exit(1); // Exit process with failure
