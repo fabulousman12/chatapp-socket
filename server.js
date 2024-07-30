@@ -22,7 +22,7 @@ app.use(express.urlencoded({ extended: true }));
 
 const corsOptions = {
   
-    origin: "http://localhost:3000",
+    origin: '*',
     methods: ["GET", "POST",'PUT'],
    
   
@@ -58,8 +58,8 @@ if (process.env.ENV === "DEVELOPMENT") {
 }
 
 // Start the server
-const server = app.listen(process.env.SERVER1, () => {
-    console.log("Server listening on port ",process.env.SERVER1);
+const server = app.listen(process.env.PORT, () => {
+    console.log("Server listening on port ",process.env.PORT);
 });
 
 // WebSocket server setup
