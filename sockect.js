@@ -132,6 +132,6 @@ io.on('connection', (socket) => {
 
 // Start HTTP server
 
-httpServer.listen(process.env.SERVER2, () => {
-    console.log(`Server is running on port ${process.env.SERVER2}`);
+httpServer.listen(process.env.PORT, () => {
+    console.log(`Server is running on port ${process.env.PORT}`);
 });
