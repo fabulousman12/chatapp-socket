@@ -5,52 +5,41 @@ const fetchuser = require('../middleware/fetchuser');
 
 // mark read messages
 
+
 router.post('/mark-read', fetchuser, async (req, res) => {
   try {
     const userId = req.user.id; // Current user ID from fetchuser middleware
-    const { messageIds } = req.body; // Message IDs to mark as read
+    let { messageIds } = req.body; // Message IDs to mark as read
 
-    // Validate and ensure messageIds is either a string or an array of strings
+    // Ensure messageIds is an array
     if (typeof messageIds === 'string') {
-      // Single ID case
-      const messageId = messageIds.trim();
-      if (messageId === '') {
-        return res.status(400).json({ error: 'Invalid message ID' });
-      }
-
-      const updateQuery = `
-        UPDATE messages
-        SET \`read\` = 1
-        WHERE recipient = ? AND id = ?
-      `;
-      const [updateResult] = await mysqlPromisePool.promise().query(updateQuery, [userId, messageId]);
-
-      return res.json({ success: true, updatedCount: updateResult.affectedRows });
-
-    } else if (Array.isArray(messageIds) && messageIds.every(id => typeof id === 'string')) {
-      // Array of IDs case
-      const messageIdStrings = messageIds.map(id => id.trim()).filter(id => id !== '');
-
-      if (messageIdStrings.length === 0) {
-        return res.status(200).json({ message: 'No valid message IDs provided' });
-      }
-
-      // Construct the query with placeholders
-      const placeholders = messageIdStrings.map(() => '?').join(',');
-      const updateQuery = `
-        UPDATE messages
-        SET \`read\` = 1
-        WHERE recipient = ? AND id IN (${placeholders})
-      `;
-      const queryParams = [userId, ...messageIdStrings];
-
-      const [updateResult] = await mysqlPromisePool.promise().query(updateQuery, queryParams);
-
-      return res.json({ success: true, updatedCount: updateResult.affectedRows });
-
-    } else {
+      // Single ID case: Convert to an array with one element
+      messageIds = [messageIds];
+    } else if (!Array.isArray(messageIds)) {
+      // If messageIds is not an array or string, return an error
       return res.status(400).json({ error: 'Invalid message IDs format' });
     }
+console.log(messageIds)
+    // Convert all message IDs to strings and filter out any empty or invalid IDs
+    messageIds = messageIds.map(id => String(id).trim()).filter(id => id !== '');
+
+    if (messageIds.length === 0) {
+      return res.status(200).json({ message: 'No message IDs provided' });
+    }
+
+    // Construct the query with placeholders
+    const placeholders = messageIds.map(() => '?').join(',');
+    const updateQuery = `
+      UPDATE messages
+      SET \`read\` = 1
+      WHERE recipient = ? AND id IN (${placeholders})
+    `;
+    const queryParams = [userId, ...messageIds];
+
+    // Execute the query
+    const [updateResult] = await mysqlPromisePool.promise().query(updateQuery, queryParams);
+
+    res.json({ success: true, updatedCount: updateResult.affectedRows });
   } catch (error) {
     console.error('Error marking messages as read:', error);
     res.status(500).json({ error: 'Internal Server Error' });
@@ -114,3 +103,4 @@ router.post('/history', fetchuser, async (req, res) => {
 });
 
 module.exports = router;
+
