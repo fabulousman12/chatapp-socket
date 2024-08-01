@@ -168,6 +168,7 @@ router.post('/getuser', fetchuser, async (req, res) => {
         : null,
         phoneNumber:user.phoneNumber,
         email:user.email,
+        _id : user._id
 
       // Add other user details you want to include in the response
     };
