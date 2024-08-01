@@ -22,7 +22,7 @@ app.use(express.urlencoded({ extended: true }));
 
 const corsOptions = {
   
-    origin: "*",
+    origin: "http://localhost:3000",
     methods: ["GET", "POST",'PUT'],
    
   
@@ -58,13 +58,14 @@ if (process.env.ENV === "DEVELOPMENT") {
 }
 
 // Start the server
-const server = app.listen(process.env.SERVER1, () => {
-    console.log("Server listening on port ",process.env.SERVER1);
+const server = app.listen(process.env.PORT, () => {
+    console.log("Server listening on port ",process.env.PORT);
 });
 
 // WebSocket server setup
 
 const wss = new WebSocket.Server({ server });
+
 
 
 
@@ -165,10 +166,14 @@ wss.on('connection', async (ws, req) => {
 
   ws.on('message', async (message) => {
     const messageData = JSON.parse(message.toString());
-    
-    
-    const { recipient, content,sender } = messageData;
+    const decoded = jwt.verify(token, JWT_SIGN);
+    const userId = decoded.user.id;
+    const user = await User.findById(userId).select("-password");
 
+    
+    const { recipient, content } = messageData;
+    const sender = user.id;
+    const messageId = uuid.v4();
 
     if (recipient) {
       const newMessage = new Message({
@@ -180,9 +185,9 @@ wss.on('connection', async (ws, req) => {
         read:false
       });
      
-      const messageId = await saveMessageToMySQL(sender, recipient, content);
+       await saveMessageToMySQL(sender, recipient, content,messageId);
 
-
+console.log(messageId)
       
 
       wss.clients.forEach(client => {
@@ -194,7 +199,7 @@ wss.on('connection', async (ws, req) => {
             recipient,
             status: 'sent',
             read:false,
-            id: newMessage._id,
+            id: messageId,
             timestamp: new Date()
           }));
           newMessage.status = 'sent';
@@ -215,8 +220,8 @@ wss.on('connection', async (ws, req) => {
   });
 });
 
-async function saveMessageToMySQL(sender, recipient, content) {
-  const messageId = uuid.v4();
+async function saveMessageToMySQL(sender, recipient, content,messageId) {
+ 
   const insertQuery = `
     INSERT INTO messages (id, sender, recipient, content, timestamp, status, \`read\`)
     VALUES (?, ?, ?, ?, NOW(), 'pending', 0)
