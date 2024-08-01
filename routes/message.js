@@ -5,33 +5,52 @@ const fetchuser = require('../middleware/fetchuser');
 
 // mark read messages
 
-
 router.post('/mark-read', fetchuser, async (req, res) => {
   try {
     const userId = req.user.id; // Current user ID from fetchuser middleware
-    const { messageIds } = req.body; // Array of message IDs to mark as read
+    const { messageIds } = req.body; // Message IDs to mark as read
 
-    // Convert messageIds to an array of integers
-    const messageIdIntegers = messageIds.map(id => parseInt(id));
+    // Validate and ensure messageIds is either a string or an array of strings
+    if (typeof messageIds === 'string') {
+      // Single ID case
+      const messageId = messageIds.trim();
+      if (messageId === '') {
+        return res.status(400).json({ error: 'Invalid message ID' });
+      }
 
-    if (messageIdIntegers.length === 0) {
-      return res.status(400).json({ error: 'No message IDs provided' });
+      const updateQuery = `
+        UPDATE messages
+        SET \`read\` = 1
+        WHERE recipient = ? AND id = ?
+      `;
+      const [updateResult] = await mysqlPromisePool.promise().query(updateQuery, [userId, messageId]);
+
+      return res.json({ success: true, updatedCount: updateResult.affectedRows });
+
+    } else if (Array.isArray(messageIds) && messageIds.every(id => typeof id === 'string')) {
+      // Array of IDs case
+      const messageIdStrings = messageIds.map(id => id.trim()).filter(id => id !== '');
+
+      if (messageIdStrings.length === 0) {
+        return res.status(200).json({ message: 'No valid message IDs provided' });
+      }
+
+      // Construct the query with placeholders
+      const placeholders = messageIdStrings.map(() => '?').join(',');
+      const updateQuery = `
+        UPDATE messages
+        SET \`read\` = 1
+        WHERE recipient = ? AND id IN (${placeholders})
+      `;
+      const queryParams = [userId, ...messageIdStrings];
+
+      const [updateResult] = await mysqlPromisePool.promise().query(updateQuery, queryParams);
+
+      return res.json({ success: true, updatedCount: updateResult.affectedRows });
+
+    } else {
+      return res.status(400).json({ error: 'Invalid message IDs format' });
     }
-
-    // Update messages to mark as read
-    let updateQuery = `
-      UPDATE messages
-      SET \`read\` = 1
-      WHERE recipient = ?`;
-
-    // Append the IN clause only if there are message IDs to update
-    if (messageIdIntegers.length > 0) {
-      updateQuery += ` AND id IN (?)`;
-    }
-
-    const [updateResult] = await mysqlPromisePool.promise().query(updateQuery, [userId, messageIdIntegers]);
-
-    res.json({ success: true, updatedCount: updateResult.affectedRows });
   } catch (error) {
     console.error('Error marking messages as read:', error);
     res.status(500).json({ error: 'Internal Server Error' });
