@@ -22,7 +22,7 @@ app.use(express.urlencoded({ extended: true }));
 
 const corsOptions = {
   
-    origin: "http://localhost:3000",
+    origin: "*",
     methods: ["GET", "POST",'PUT'],
    
   
